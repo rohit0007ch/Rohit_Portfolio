@@ -6,9 +6,14 @@ const About = () => {
       <div className="about-me">
         <h3 className="title">About Me</h3>
         <p className="para">
-          Lorem ipsum dolor sit amet consectetur adipisicing elit. Hic quis
-          dolores numquam iusto Ratione earum ducimus autem id iure pariatur
-          dolorum quae maiores.
+          Passionate and growth-driven Mobile Application Developer with hands-on
+          experience in Native iOS and Flutter development. Skilled in building
+          scalable, user-centric, and high-performance mobile applications using
+          Swift, UIKit, Xcode, and Flutter. Experienced in implementing Firebase
+          integrations, push notifications, authentication systems, custom UI/UX,
+          localization, debugging, and performance optimization. Dedicated to
+          creating seamless mobile experiences while growing as a professional
+          iOS and cross-platform developer.
         </p>
       </div>
     </div>

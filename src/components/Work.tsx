@@ -1,78 +1,164 @@
 import "./styles/Work.css";
-import WorkImage from "./WorkImage";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { useGSAP } from "@gsap/react";
+import { SiAppstore, SiGithub } from "react-icons/si";
+import { HiArrowUpRight } from "react-icons/hi2";
+import {
+  featuredProjects,
+  openSourceProjects,
+  GITHUB_PROFILE_URL,
+  type Project,
+} from "../data/projects";
 
-gsap.registerPlugin(useGSAP);
+const getPlaceholderInitials = (name: string) =>
+  name
+    .split(/\s+/)
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
-const Work = () => {
-  useGSAP(() => {
-  let translateX: number = 0;
+const ProjectCard = ({
+  project,
+  variant,
+}: {
+  project: Project;
+  variant: "featured" | "open-source";
+}) => {
+  const linkUrl = project.storeUrl ?? project.repoUrl;
+  const isFeatured = variant === "featured";
 
-  function setTranslateX() {
-    const box = document.getElementsByClassName("work-box");
-    const rectLeft = document
-      .querySelector(".work-container")!
-      .getBoundingClientRect().left;
-    const rect = box[0].getBoundingClientRect();
-    const parentWidth = box[0].parentElement!.getBoundingClientRect().width;
-    let padding: number =
-      parseInt(window.getComputedStyle(box[0]).padding) / 2;
-    translateX = rect.width * box.length - (rectLeft + parentWidth) + padding;
-  }
-
-  setTranslateX();
-
-  let timeline = gsap.timeline({
-    scrollTrigger: {
-      trigger: ".work-section",
-      start: "top top",
-      end: `+=${translateX}`, // Use actual scroll width
-      scrub: true,
-      pin: true,
-      id: "work",
-    },
-  });
-
-  timeline.to(".work-flex", {
-    x: -translateX,
-    ease: "none",
-  });
-
-  // Clean up (optional, good practice)
-  return () => {
-    timeline.kill();
-    ScrollTrigger.getById("work")?.kill();
-  };
-}, []);
-  return (
-    <div className="work-section" id="work">
-      <div className="work-container section-container">
-        <h2>
-          My <span>Work</span>
-        </h2>
-        <div className="work-flex">
-          {[...Array(6)].map((_value, index) => (
-            <div className="work-box" key={index}>
-              <div className="work-info">
-                <div className="work-title">
-                  <h3>0{index + 1}</h3>
-
-                  <div>
-                    <h4>Project Name</h4>
-                    <p>Category</p>
-                  </div>
-                </div>
-                <h4>Tools and features</h4>
-                <p>Javascript, TypeScript, React, Threejs</p>
-              </div>
-              <WorkImage image="/images/placeholder.webp" alt="" />
-            </div>
-          ))}
+  const content = (
+    <>
+      {isFeatured && <span className="project-featured-badge">Featured</span>}
+      <div className="project-card-glow" aria-hidden="true" />
+      <div className="project-card-header">
+        <span className="project-card-num">{project.num}</span>
+        <div className="project-card-titles">
+          <h3>{project.name}</h3>
+          <p className="project-card-category">{project.category}</p>
         </div>
       </div>
-    </div>
+
+      <div
+        className={`project-card-visual${
+          project.image ? "" : " project-card-visual--placeholder"
+        }`}
+      >
+        {project.image ? (
+          <img src={project.image} alt={project.alt ?? project.name} loading="lazy" />
+        ) : (
+          <div className="project-card-placeholder" aria-hidden="true">
+            <span className="project-card-placeholder-icon">
+              {getPlaceholderInitials(project.name)}
+            </span>
+          </div>
+        )}
+      </div>
+
+      <p className="project-card-description">{project.description}</p>
+
+      <div className="project-card-contributions">
+        <h4>Key Contributions</h4>
+        <ul>
+          {project.contributions.map((item, index) => (
+            <li key={index}>{item}</li>
+          ))}
+        </ul>
+      </div>
+
+      {project.storeUrl && (
+        <span className="project-card-cta project-store-cta">
+          <SiAppstore className="project-cta-icon" aria-hidden="true" />
+          <span>View on App Store</span>
+          <HiArrowUpRight className="project-cta-arrow" aria-hidden="true" />
+        </span>
+      )}
+
+      {project.repoUrl && (
+        <span className="project-card-cta project-repo-cta">
+          <SiGithub className="project-cta-icon" aria-hidden="true" />
+          <span>View Repository</span>
+          <HiArrowUpRight className="project-cta-arrow" aria-hidden="true" />
+        </span>
+      )}
+    </>
+  );
+
+  const className = [
+    "project-card",
+    isFeatured ? "project-card--featured" : "project-card--open-source",
+    linkUrl ? "project-card--linked" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  if (linkUrl) {
+    const label = project.storeUrl
+      ? `${project.name} on the App Store`
+      : `${project.name} on GitHub`;
+    return (
+      <a
+        className={className}
+        href={linkUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        data-cursor="disable"
+        aria-label={label}
+      >
+        {content}
+      </a>
+    );
+  }
+
+  return <article className={className}>{content}</article>;
+};
+
+const Work = () => {
+  return (
+    <section className="work-section section-container" id="work">
+      <div className="work-header">
+        <h2>
+          Featured <span>Projects</span>
+        </h2>
+        <p className="work-subtitle">
+          Production mobile apps shipped to the App Store
+        </p>
+      </div>
+
+      <div className="projects-grid projects-grid--featured">
+        {featuredProjects.map((project) => (
+          <ProjectCard key={project.id} project={project} variant="featured" />
+        ))}
+      </div>
+
+      <div className="work-divider" aria-hidden="true" />
+
+      <div className="work-subsection">
+        <h3 className="work-subsection-title">Open Source Projects</h3>
+        <p className="work-subsection-subtitle">
+          Tap any card to explore the source code on GitHub
+        </p>
+        <div className="projects-grid projects-grid--open-source">
+          {openSourceProjects.map((project) => (
+            <ProjectCard
+              key={project.id}
+              project={project}
+              variant="open-source"
+            />
+          ))}
+        </div>
+        <a
+          className="work-github-more"
+          href={GITHUB_PROFILE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          data-cursor="disable"
+        >
+          <SiGithub aria-hidden="true" />
+          <span>View more on GitHub</span>
+          <HiArrowUpRight aria-hidden="true" />
+        </a>
+      </div>
+    </section>
   );
 };
 

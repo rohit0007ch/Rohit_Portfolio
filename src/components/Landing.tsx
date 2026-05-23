@@ -7,23 +7,35 @@ const Landing = ({ children }: PropsWithChildren) => {
       <div className="landing-section" id="landingDiv">
         <div className="landing-container">
           <div className="landing-intro">
-            <h2>Hello! I'm</h2>
+            <h2>Hello! I&apos;m</h2>
             <h1>
-              MONCY
+              ROHIT
               <br />
-              <span>YOHANNAN</span>
+              <span>&nbsp;</span>
             </h1>
           </div>
           <div className="landing-info">
-            <h3>A Creative</h3>
-            <h2 className="landing-info-h2">
-              <div className="landing-h2-1">Designer</div>
-              <div className="landing-h2-2">Developer</div>
-            </h2>
-            <h2>
-              <div className="landing-h2-info">Developer</div>
-              <div className="landing-h2-info-1">Designer</div>
-            </h2>
+            <p className="landing-role-eyebrow">A Professional</p>
+            <div className="landing-role-display">
+              <div className="landing-role-row landing-role-row--accent">
+                <div
+                  className="landing-role-viewport"
+                  data-role-carousel="platform"
+                >
+                  <span className="landing-role-item is-active">iOS</span>
+                  <span className="landing-role-item">Flutter</span>
+                </div>
+              </div>
+              <div className="landing-role-row landing-role-row--title">
+                <div
+                  className="landing-role-viewport"
+                  data-role-carousel="title"
+                >
+                  <span className="landing-role-item is-active">Developer</span>
+                  <span className="landing-role-item">Engineer</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         {children}

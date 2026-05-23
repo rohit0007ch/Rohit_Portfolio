@@ -2,6 +2,45 @@ import { SplitText } from "gsap-trial/SplitText";
 import gsap from "gsap";
 import { smoother } from "../Navbar";
 
+function startRoleCarousels() {
+  document.querySelectorAll("[data-role-carousel]").forEach((viewport) => {
+    const items = Array.from(
+      viewport.querySelectorAll<HTMLElement>(".landing-role-item")
+    );
+    if (items.length < 2) return;
+
+    let current = items.findIndex((el) => el.classList.contains("is-active"));
+    if (current < 0) {
+      current = 0;
+      items[0].classList.add("is-active");
+    }
+
+    const swap = () => {
+      const prev = items[current];
+      current = (current + 1) % items.length;
+      const next = items[current];
+
+      gsap.killTweensOf(items);
+      gsap.to(prev, {
+        opacity: 0,
+        y: -12,
+        duration: 0.4,
+        ease: "power2.in",
+        onComplete: () => prev.classList.remove("is-active"),
+      });
+
+      next.classList.add("is-active");
+      gsap.fromTo(
+        next,
+        { opacity: 0, y: 14 },
+        { opacity: 1, y: 0, duration: 0.5, ease: "power2.out", delay: 0.08 }
+      );
+    };
+
+    gsap.timeline({ repeat: -1, repeatDelay: 3.2, delay: 2.5 }).call(swap);
+  });
+}
+
 export function initialFX() {
   document.body.style.overflowY = "auto";
   smoother.paused(false);
@@ -12,55 +51,45 @@ export function initialFX() {
     delay: 1,
   });
 
-  var landingText = new SplitText(
-    [".landing-info h3", ".landing-intro h2", ".landing-intro h1"],
+  const landingText = new SplitText(
+    [".landing-role-eyebrow", ".landing-intro h2", ".landing-intro h1"],
     {
       type: "chars,lines",
       linesClass: "split-line",
     }
   );
+
   gsap.fromTo(
     landingText.chars,
-    { opacity: 0, y: 80, filter: "blur(5px)" },
+    { opacity: 0, y: 40, filter: "blur(4px)" },
     {
       opacity: 1,
-      duration: 1.2,
+      duration: 1,
       filter: "blur(0px)",
-      ease: "power3.inOut",
+      ease: "power3.out",
       y: 0,
-      stagger: 0.025,
-      delay: 0.3,
+      stagger: 0.02,
+      delay: 0.35,
     }
   );
 
-  let TextProps = { type: "chars,lines", linesClass: "split-h2" };
-
-  var landingText2 = new SplitText(".landing-h2-info", TextProps);
-  gsap.fromTo(
-    landingText2.chars,
-    { opacity: 0, y: 80, filter: "blur(5px)" },
-    {
-      opacity: 1,
-      duration: 1.2,
-      filter: "blur(0px)",
-      ease: "power3.inOut",
-      y: 0,
-      stagger: 0.025,
-      delay: 0.3,
-    }
-  );
+  document.querySelectorAll(".landing-role-item.is-active").forEach((el) => {
+    gsap.set(el, { opacity: 1, y: 0 });
+  });
 
   gsap.fromTo(
-    ".landing-info-h2",
-    { opacity: 0, y: 30 },
+    ".landing-role-display",
+    { opacity: 0, y: 24 },
     {
       opacity: 1,
-      duration: 1.2,
-      ease: "power1.inOut",
       y: 0,
-      delay: 0.8,
+      duration: 1,
+      ease: "power2.out",
+      delay: 0.65,
+      onComplete: startRoleCarousels,
     }
   );
+
   gsap.fromTo(
     [".header", ".icons-section", ".nav-fade"],
     { opacity: 0 },
@@ -68,69 +97,7 @@ export function initialFX() {
       opacity: 1,
       duration: 1.2,
       ease: "power1.inOut",
-      delay: 0.1,
+      delay: 0.15,
     }
   );
-
-  var landingText3 = new SplitText(".landing-h2-info-1", TextProps);
-  var landingText4 = new SplitText(".landing-h2-1", TextProps);
-  var landingText5 = new SplitText(".landing-h2-2", TextProps);
-
-  LoopText(landingText2, landingText3);
-  LoopText(landingText4, landingText5);
-}
-
-function LoopText(Text1: SplitText, Text2: SplitText) {
-  var tl = gsap.timeline({ repeat: -1, repeatDelay: 1 });
-  const delay = 4;
-  const delay2 = delay * 2 + 1;
-
-  tl.fromTo(
-    Text2.chars,
-    { opacity: 0, y: 80 },
-    {
-      opacity: 1,
-      duration: 1.2,
-      ease: "power3.inOut",
-      y: 0,
-      stagger: 0.1,
-      delay: delay,
-    },
-    0
-  )
-    .fromTo(
-      Text1.chars,
-      { y: 80 },
-      {
-        duration: 1.2,
-        ease: "power3.inOut",
-        y: 0,
-        stagger: 0.1,
-        delay: delay2,
-      },
-      1
-    )
-    .fromTo(
-      Text1.chars,
-      { y: 0 },
-      {
-        y: -80,
-        duration: 1.2,
-        ease: "power3.inOut",
-        stagger: 0.1,
-        delay: delay,
-      },
-      0
-    )
-    .to(
-      Text2.chars,
-      {
-        y: -80,
-        duration: 1.2,
-        ease: "power3.inOut",
-        stagger: 0.1,
-        delay: delay2,
-      },
-      1
-    );
 }
