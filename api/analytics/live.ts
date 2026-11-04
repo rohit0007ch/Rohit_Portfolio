@@ -29,7 +29,12 @@ export default async function handler(req: any, res: any) {
 
     const payload = await buildLiveTelemetry(supabase, nowIso);
 
-    res.setHeader('Cache-Control', 'public, max-age=3, stale-while-revalidate=5');
+    // Live feed must never be cached by browsers/CDNs.
+    res.setHeader(
+      'Cache-Control',
+      'no-store, no-cache, must-revalidate, max-age=0'
+    );
+    res.setHeader('Pragma', 'no-cache');
 
     return sendJson(res, 200, {
       success: true,

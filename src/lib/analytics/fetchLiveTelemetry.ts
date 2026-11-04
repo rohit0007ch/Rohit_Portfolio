@@ -3,9 +3,14 @@ import type { LiveTelemetry } from './liveTypes';
 export async function fetchLiveTelemetry(
   signal?: AbortSignal
 ): Promise<LiveTelemetry> {
-  const response = await fetch('/api/analytics/live', {
+  const response = await fetch(`/api/analytics/live?t=${Date.now()}`, {
     method: 'GET',
-    headers: { Accept: 'application/json' },
+    headers: {
+      Accept: 'application/json',
+      'Cache-Control': 'no-cache',
+      Pragma: 'no-cache',
+    },
+    cache: 'no-store',
     signal,
   });
 

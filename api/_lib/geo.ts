@@ -8,19 +8,25 @@ export interface GeoInfo {
   ipHash: string | null;
 }
 
+function decodeHeaderValue(value: string): string {
+  try {
+    return decodeURIComponent(value.replace(/\+/g, ' ')).trim();
+  } catch {
+    return value.trim();
+  }
+}
+
 function headerValue(
   headers: Record<string, string | string[] | undefined>,
   name: string
 ): string | null {
   const raw = headers[name] ?? headers[name.toLowerCase()];
-  if (Array.isArray(raw)) {
-    return raw[0]?.trim() || null;
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (typeof value !== 'string') {
+    return null;
   }
-  if (typeof raw === 'string') {
-    const value = raw.trim();
-    return value || null;
-  }
-  return null;
+  const decoded = decodeHeaderValue(value);
+  return decoded || null;
 }
 
 function extractClientIp(

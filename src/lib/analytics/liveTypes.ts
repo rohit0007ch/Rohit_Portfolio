@@ -1,5 +1,5 @@
 export interface AnonymizedSession {
-  displayIndex: number;
+  sessionKey: string;
   label: string;
   isLive: boolean;
   deviceType: string;
@@ -10,10 +10,14 @@ export interface AnonymizedSession {
   region: string;
   city: string;
   postalCode: string;
+  locationLabel: string;
   screenResolution: string;
   timezone: string;
+  startedAt: string | null;
+  lastSeenAt: string | null;
   startedAtLabel: string;
   lastSeenAtLabel: string;
+  lastSeenRelative: string;
 }
 
 export interface LiveTelemetry {

@@ -6,7 +6,7 @@ import {
   rotateSessionId,
 } from './ids';
 
-const HEARTBEAT_INTERVAL_MS = 15_000;
+const HEARTBEAT_INTERVAL_MS = 10_000;
 
 interface TrackApiResponse {
   success?: boolean;
