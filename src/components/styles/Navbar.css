@@ -30,6 +30,16 @@
   font-weight: 600;
   cursor: pointer;
 }
+.navbar-live-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
 .navbar-connect {
   position: absolute;
   display: none;

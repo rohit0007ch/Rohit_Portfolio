@@ -8,7 +8,11 @@ import "./styles/Navbar.css";
 gsap.registerPlugin(ScrollSmoother, ScrollTrigger);
 export let smoother: ScrollSmoother;
 
-const Navbar = () => {
+interface NavbarProps {
+  onLiveClick?: () => void;
+}
+
+const Navbar = ({ onLiveClick }: NavbarProps) => {
   useEffect(() => {
     smoother = ScrollSmoother.create({
       wrapper: "#smooth-wrapper",
@@ -23,7 +27,7 @@ const Navbar = () => {
     smoother.scrollTop(0);
     smoother.paused(true);
 
-    let links = document.querySelectorAll(".header ul a");
+    let links = document.querySelectorAll(".header ul a[data-href]");
     links.forEach((elem) => {
       let element = elem as HTMLAnchorElement;
       element.addEventListener("click", (e) => {
@@ -73,9 +77,14 @@ const Navbar = () => {
             </a>
           </li>
           <li>
-            <a href="/analytics" data-cursor="disable">
+            <button
+              type="button"
+              className="navbar-live-btn"
+              data-cursor="disable"
+              onClick={onLiveClick}
+            >
               <HoverLinks text="LIVE" />
-            </a>
+            </button>
           </li>
         </ul>
       </div>

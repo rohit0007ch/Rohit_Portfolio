@@ -6,6 +6,7 @@ import Cursor from "./Cursor";
 import Landing from "./Landing";
 import Navbar from "./Navbar";
 import SocialIcons from "./SocialIcons";
+import TelemetryModal from "./TelemetryModal";
 import WhatIDo from "./WhatIDo";
 import Skills from "./Skills";
 import Work from "./Work";
@@ -15,6 +16,7 @@ const MainContainer = ({ children }: PropsWithChildren) => {
   const [isDesktopView, setIsDesktopView] = useState<boolean>(
     window.innerWidth > 1024
   );
+  const [telemetryOpen, setTelemetryOpen] = useState(false);
 
   useEffect(() => {
     const resizeHandler = () => {
@@ -31,7 +33,7 @@ const MainContainer = ({ children }: PropsWithChildren) => {
   return (
     <div className="container-main">
       <Cursor />
-      <Navbar />
+      <Navbar onLiveClick={() => setTelemetryOpen(true)} />
       <SocialIcons />
       {isDesktopView && children}
       <div id="smooth-wrapper">
@@ -47,6 +49,10 @@ const MainContainer = ({ children }: PropsWithChildren) => {
           </div>
         </div>
       </div>
+      <TelemetryModal
+        open={telemetryOpen}
+        onClose={() => setTelemetryOpen(false)}
+      />
     </div>
   );
 };
