@@ -116,9 +116,10 @@ const TelemetryModal = ({ open, onClose }: TelemetryModalProps) => {
 
   if (!open) return null;
 
+  const visibleSessions = data?.sessions.slice(0, 6) ?? [];
   const selected: AnonymizedSession | null =
-    data?.sessions.find((session) => session.sessionKey === selectedKey) ??
-    data?.sessions[0] ??
+    visibleSessions.find((session) => session.sessionKey === selectedKey) ??
+    visibleSessions[0] ??
     null;
 
   return (
@@ -196,11 +197,11 @@ const TelemetryModal = ({ open, onClose }: TelemetryModalProps) => {
               <div className="telemetry-body">
                 <section className="telemetry-panel">
                   <h3>Active &amp; Recorded Sessions</h3>
-                  {data.sessions.length === 0 ? (
+                  {visibleSessions.length === 0 ? (
                     <div className="telemetry-state">No sessions yet</div>
                   ) : (
                     <ul className="telemetry-session-list">
-                      {data.sessions.map((session) => (
+                      {visibleSessions.map((session) => (
                         <li key={session.sessionKey}>
                           <button
                             type="button"
@@ -264,15 +265,6 @@ const TelemetryModal = ({ open, onClose }: TelemetryModalProps) => {
                         <div className="telemetry-detail">
                           <span>Browser</span>
                           <strong>{browserLabel(selected)}</strong>
-                        </div>
-                        <div className="telemetry-detail">
-                          <span>Screen / Timezone</span>
-                          <strong>
-                            {selected.screenResolution}
-                            {selected.timezone !== 'Unknown'
-                              ? ` · ${selected.timezone}`
-                              : ''}
-                          </strong>
                         </div>
                       </div>
                       <div className="telemetry-detail-footer">
