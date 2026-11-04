@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host",
+    "dev:vercel": "bash -c 'set -a && source .env.local && set +a && npx vercel dev'",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
@@ -16,6 +17,7 @@
     "@react-three/fiber": "^8.17.10",
     "@react-three/postprocessing": "^2.16.3",
     "@react-three/rapier": "^1.5.0",
+    "@supabase/supabase-js": "^2.118.0",
     "@types/three": "^0.168.0",
     "@vercel/analytics": "^1.4.1",
     "gsap": "^3.15.0",
@@ -28,6 +30,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
+    "@types/node": "^26.6.6",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",

@@ -4,6 +4,7 @@ import { TbNotes } from "react-icons/tb";
 import { useEffect } from "react";
 import HoverLinks from "./HoverLinks";
 import { RESUME_URL, RESUME_DOWNLOAD_NAME } from "../constants/resume";
+import { trackResumeDownload } from "../lib/tracking/resumeDownload";
 
 const SocialIcons = () => {
   useEffect(() => {
@@ -88,6 +89,7 @@ const SocialIcons = () => {
         href={RESUME_URL}
         download={RESUME_DOWNLOAD_NAME}
         data-cursor="disable"
+        onClick={() => trackResumeDownload(RESUME_DOWNLOAD_NAME)}
       >
         <HoverLinks text="RESUME" />
         <span>

@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/analytics",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/analytics/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

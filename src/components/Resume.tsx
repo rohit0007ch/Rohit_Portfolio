@@ -1,8 +1,11 @@
 import "./styles/Resume.css";
 import { TbDownload } from "react-icons/tb";
 import { RESUME_URL, RESUME_DOWNLOAD_NAME } from "../constants/resume";
+import { trackResumeDownload } from "../lib/tracking/resumeDownload";
 
 const Resume = () => {
+  const onDownload = () => trackResumeDownload(RESUME_DOWNLOAD_NAME);
+
   return (
     <section className="resume-section section-container" id="resume">
       <div className="resume-header">
@@ -17,6 +20,7 @@ const Resume = () => {
           href={RESUME_URL}
           download={RESUME_DOWNLOAD_NAME}
           data-cursor="disable"
+          onClick={onDownload}
         >
           <TbDownload aria-hidden="true" />
           Download PDF
@@ -30,7 +34,12 @@ const Resume = () => {
         />
         <p className="resume-preview-fallback">
           PDF preview not supported in your browser.{" "}
-          <a href={RESUME_URL} download={RESUME_DOWNLOAD_NAME} data-cursor="disable">
+          <a
+            href={RESUME_URL}
+            download={RESUME_DOWNLOAD_NAME}
+            data-cursor="disable"
+            onClick={onDownload}
+          >
             Download the resume
           </a>{" "}
           instead.
