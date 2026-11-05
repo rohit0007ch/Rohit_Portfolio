@@ -5,11 +5,7 @@ import {
   sendJson,
   setCorsHeaders,
 } from '../_lib/http.js';
-import {
-  expireStaleSessions,
-  inactivityCutoffIso,
-  utcNowIso,
-} from '../_lib/sessions.js';
+import { expireStaleSessions, utcNowIso } from '../_lib/sessions.js';
 import { getSupabaseAdmin } from '../_lib/supabaseAdmin.js';
 import { isUuid } from '../_lib/validate.js';
 
@@ -87,34 +83,25 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    // This session itself went stale between heartbeats.
-    if (
-      session.last_seen_at &&
-      new Date(session.last_seen_at).getTime() <
-        new Date(inactivityCutoffIso(new Date(nowIso))).getTime()
-    ) {
-      await supabase
-        .from('visitor_sessions')
-        .update({ session_ended_at: nowIso })
-        .eq('id', sessionId)
-        .is('session_ended_at', null);
-
-      return sendJson(res, 200, {
-        success: true,
-        active: false,
-        message: 'Session expired due to inactivity',
-      });
-    }
+    // Do not end the session here when last_seen looks "late".
+    // Browser timer throttling often delays heartbeats past the cutoff; ending
+    // on that race zeros active visitors. expireStaleSessions handles true idle.
 
     const geo = getRequestGeo(req.headers ?? {});
     const sessionPatch: Record<string, string> = {
       last_seen_at: nowIso,
     };
 
-    // Backfill location/network hash if the session was created without geo.
-    if (!session.country && geo.country) sessionPatch.country = geo.country;
-    if (!session.region && geo.region) sessionPatch.region = geo.region;
-    if (!session.city && geo.city) sessionPatch.city = geo.city;
+    // Backfill or repair location/network fields (including encoded legacy cities).
+    if (geo.country && (!session.country || String(session.country).includes('%'))) {
+      sessionPatch.country = geo.country;
+    }
+    if (geo.region && (!session.region || String(session.region).includes('%'))) {
+      sessionPatch.region = geo.region;
+    }
+    if (geo.city && (!session.city || String(session.city).includes('%'))) {
+      sessionPatch.city = geo.city;
+    }
     if (!session.postal_code && geo.postalCode) {
       sessionPatch.postal_code = geo.postalCode;
     }

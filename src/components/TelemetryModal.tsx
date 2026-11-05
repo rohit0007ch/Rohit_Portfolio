@@ -216,7 +216,7 @@ const TelemetryModal = ({ open, onClose }: TelemetryModalProps) => {
 
   if (!open) return null;
 
-  const visibleSessions = data?.sessions.slice(0, 5) ?? [];
+  const visibleSessions = data?.sessions.slice(0, 6) ?? [];
   const selected: AnonymizedSession | null =
     visibleSessions.find((session) => session.sessionKey === selectedKey) ??
     visibleSessions[0] ??
@@ -224,22 +224,22 @@ const TelemetryModal = ({ open, onClose }: TelemetryModalProps) => {
 
   const detailRows = selected
     ? [
-        { label: 'IP', value: 'Protected' },
-        { label: 'City', value: cityPostalLabel(selected) },
+        { label: 'IP address', value: 'Protected' },
+        { label: 'City & postal', value: cityPostalLabel(selected) },
         {
-          label: 'Device',
+          label: 'Device & OS',
           value: `${selected.deviceType} · ${selected.operatingSystem}`,
         },
-        { label: 'Region', value: regionCountryLabel(selected) },
+        { label: 'State & region', value: regionCountryLabel(selected) },
         { label: 'Browser', value: browserLabel(selected) },
         {
-          label: 'Display',
+          label: 'Display & timezone',
           value: `${selected.screenResolution} · ${selected.timezone}`,
         },
         {
-          label: 'Started',
-          value: `${selected.startedAtLabel}${
-            selected.isLive ? ' · Active' : ' · Idle'
+          label: 'Session status',
+          value: `${selected.startedAtLabel} · ${
+            selected.isLive ? 'Active now' : 'Idle'
           }`,
         },
       ]
@@ -257,16 +257,17 @@ const TelemetryModal = ({ open, onClose }: TelemetryModalProps) => {
         className="telemetry-modal"
         role="dialog"
         aria-modal="true"
-        aria-label="Visitor telemetry"
+        aria-label="Real-time visitor telemetry"
         data-cursor="disable"
       >
-        <header className="telemetry-header">
-          <div>
-            <p className="telemetry-kicker">
-              <span className="telemetry-pulse" aria-hidden="true" />
-              Live visitors
-            </p>
-            <h2 className="telemetry-title">Telemetry</h2>
+        <header className="telemetry-topbar">
+          <div className="telemetry-brand">
+            <div className="telemetry-brand-kicker">
+              <span className="telemetry-live-dot" aria-hidden="true" />
+              Public
+            </div>
+            <h2>Visitor telemetry</h2>
+            <p>Live portfolio traffic · Asia/Kolkata</p>
           </div>
           <button
             type="button"
@@ -292,34 +293,52 @@ const TelemetryModal = ({ open, onClose }: TelemetryModalProps) => {
         ) : null}
 
         {data ? (
-          <div className="telemetry-content">
-            <div className="telemetry-watch">
-              <div>
-                <strong>{data.watchingLabel}</strong>
-                <span>
-                  Session {activeSessionClock} · {data.updatedAtLabel}
-                </span>
+          <div className="telemetry-grid">
+            <section className="telemetry-panel telemetry-watch-panel">
+              <div className="telemetry-panel-header">
+                <h3>Live activity</h3>
+                <span>Refresh 5s</span>
               </div>
-              <span className="telemetry-live-tag">Live</span>
-            </div>
+              <div className="telemetry-watch-row">
+                <div className="telemetry-live-count">
+                  <strong>{data.overview.activeWatchers}</strong>
+                  <span>Live now</span>
+                </div>
+                <div className="telemetry-watch-copy">
+                  <strong>{data.watchingLabel}</strong>
+                  <span>
+                    Session {activeSessionClock} · {data.updatedAtLabel}
+                  </span>
+                </div>
+              </div>
+            </section>
 
-            <div className="telemetry-stats">
-              <div>
-                <strong>{data.overview.totalVisitors}</strong>
-                <span>Visitors</span>
-              </div>
-              <div>
-                <strong>{data.overview.uniqueDevices}</strong>
-                <span>Devices</span>
-              </div>
-              <div className="is-live">
-                <strong>{data.overview.activeWatchers}</strong>
-                <span>Watching</span>
-              </div>
-            </div>
+            <section className="telemetry-overview" aria-label="Overview">
+              <article className="telemetry-stat">
+                <span className="telemetry-stat-label">Total visitors</span>
+                <div className="telemetry-stat-value">
+                  {data.overview.totalVisitors.toLocaleString('en-IN')}
+                </div>
+              </article>
+              <article className="telemetry-stat">
+                <span className="telemetry-stat-label">Unique devices</span>
+                <div className="telemetry-stat-value">
+                  {data.overview.uniqueDevices.toLocaleString('en-IN')}
+                </div>
+              </article>
+              <article className="telemetry-stat is-live">
+                <span className="telemetry-stat-label">Active watchers</span>
+                <div className="telemetry-stat-value">
+                  {data.overview.activeWatchers.toLocaleString('en-IN')}
+                </div>
+              </article>
+            </section>
 
-            <section className="telemetry-section">
-              <h3>Sessions</h3>
+            <section className="telemetry-panel">
+              <div className="telemetry-panel-header">
+                <h3>Sessions</h3>
+                <span>Aggregated only</span>
+              </div>
               {visibleSessions.length === 0 ? (
                 <div className="telemetry-state compact">No sessions yet</div>
               ) : (
@@ -361,32 +380,35 @@ const TelemetryModal = ({ open, onClose }: TelemetryModalProps) => {
               )}
             </section>
 
-            <section className="telemetry-section">
-              <h3>
-                {selected
-                  ? `${selected.label} details`
-                  : 'Session details'}
-              </h3>
+            <section className="telemetry-panel">
+              <div className="telemetry-panel-header">
+                <h3>
+                  {selected ? `${selected.label} details` : 'Session details'}
+                </h3>
+                <span>Public feed</span>
+              </div>
               {!selected ? (
                 <div className="telemetry-state compact">Select a session</div>
               ) : (
-                <dl className="telemetry-facts">
+                <div className="telemetry-details-grid">
                   {detailRows.map((row) => (
-                    <div key={row.label}>
-                      <dt>{row.label}</dt>
-                      <dd>{row.value}</dd>
-                    </div>
+                    <article key={row.label} className="telemetry-detail-card">
+                      <span>{row.label}</span>
+                      <strong>{row.value}</strong>
+                    </article>
                   ))}
-                </dl>
+                </div>
               )}
             </section>
 
             <footer className="telemetry-footer">
               <span>
-                Auto-refresh 5s
+                Live Supabase aggregates
                 {error ? ' · refresh failed' : ''}
               </span>
-              <a href="/analytics">Full analytics</a>
+              <a className="telemetry-full-link" href="/analytics">
+                Full analytics →
+              </a>
             </footer>
           </div>
         ) : null}

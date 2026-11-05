@@ -1,7 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-/** Sessions without a heartbeat for this long are marked inactive. */
-export const SESSION_INACTIVITY_MS = 45_000;
+/**
+ * Sessions without a heartbeat for this long are marked inactive.
+ * Aligned with reference telemetry (60s lastSeen window) so browser timer
+ * throttling does not falsely zero out active visitors.
+ */
+export const SESSION_INACTIVITY_MS = 60_000;
 
 export function utcNowIso(): string {
   return new Date().toISOString();

@@ -79,7 +79,22 @@ function AnalyticsDashboard() {
       try {
         const payload = await fetchPublicAnalytics(range, controller.signal);
         if (cancelled) return;
-        setData(payload);
+        // Active count is owned by the faster live poll; don't clobber it with a
+        // slower public-stats response that may briefly lag after expire.
+        setData((prev) => {
+          if (!prev) return payload;
+          return {
+            ...payload,
+            overview: {
+              ...payload.overview,
+              activeVisitors: prev.overview.activeVisitors,
+            },
+            live: {
+              ...payload.live,
+              activeVisitors: prev.live.activeVisitors,
+            },
+          };
+        });
         setError(null);
         analyticsDebug('stats refresh complete', {
           ms: Math.round(performance.now() - startedAt),

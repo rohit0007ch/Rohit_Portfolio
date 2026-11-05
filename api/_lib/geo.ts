@@ -8,15 +8,33 @@ export interface GeoInfo {
   ipHash: string | null;
 }
 
-function decodeHeaderValue(value: string): string {
-  try {
-    return decodeURIComponent(value.replace(/\+/g, ' ')).trim();
-  } catch {
-    return value.trim();
+/**
+ * Iteratively URL-decode location labels so values like
+ * `San%20Jose` / `Pati%C4%81la` collapse to a single display form.
+ */
+export function normalizeGeoLabel(
+  value: string | null | undefined
+): string | null {
+  if (value == null) return null;
+
+  let current = String(value).trim();
+  if (!current) return null;
+
+  for (let i = 0; i < 3; i += 1) {
+    try {
+      const decoded = decodeURIComponent(current.replace(/\+/g, ' ')).trim();
+      if (decoded === current) break;
+      current = decoded;
+    } catch {
+      break;
+    }
   }
+
+  current = current.replace(/\s+/g, ' ').trim();
+  return current || null;
 }
 
-function headerValue(
+function rawHeaderValue(
   headers: Record<string, string | string[] | undefined>,
   name: string
 ): string | null {
@@ -25,21 +43,28 @@ function headerValue(
   if (typeof value !== 'string') {
     return null;
   }
-  const decoded = decodeHeaderValue(value);
-  return decoded || null;
+  const trimmed = value.trim();
+  return trimmed || null;
+}
+
+function geoHeaderValue(
+  headers: Record<string, string | string[] | undefined>,
+  name: string
+): string | null {
+  return normalizeGeoLabel(rawHeaderValue(headers, name));
 }
 
 function extractClientIp(
   headers: Record<string, string | string[] | undefined>
 ): string | null {
-  const forwarded = headerValue(headers, 'x-forwarded-for');
+  const forwarded = rawHeaderValue(headers, 'x-forwarded-for');
   if (forwarded) {
     return forwarded.split(',')[0]?.trim() || null;
   }
 
   return (
-    headerValue(headers, 'x-real-ip') ||
-    headerValue(headers, 'x-vercel-forwarded-for')
+    rawHeaderValue(headers, 'x-real-ip') ||
+    rawHeaderValue(headers, 'x-vercel-forwarded-for')
   );
 }
 
@@ -52,10 +77,10 @@ export function getRequestGeo(
     : null;
 
   return {
-    country: headerValue(headers, 'x-vercel-ip-country'),
-    region: headerValue(headers, 'x-vercel-ip-country-region'),
-    city: headerValue(headers, 'x-vercel-ip-city'),
-    postalCode: headerValue(headers, 'x-vercel-ip-postal-code'),
+    country: geoHeaderValue(headers, 'x-vercel-ip-country'),
+    region: geoHeaderValue(headers, 'x-vercel-ip-country-region'),
+    city: geoHeaderValue(headers, 'x-vercel-ip-city'),
+    postalCode: geoHeaderValue(headers, 'x-vercel-ip-postal-code'),
     ipHash,
   };
 }

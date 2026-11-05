@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { formatKolkataTimestamp } from './analyticsRange.js';
+import { normalizeGeoLabel } from './geo.js';
 import { inactivityCutoffIso } from './sessions.js';
 
 interface SessionRow {
@@ -81,18 +82,8 @@ const COUNTRY_NAMES: Record<string, string> = {
   LK: 'Sri Lanka',
 };
 
-function decodeMaybe(value: string): string {
-  try {
-    return decodeURIComponent(value.replace(/\+/g, ' '));
-  } catch {
-    return value;
-  }
-}
-
 function displayOrUnknown(value: string | null | undefined): string {
-  const trimmed = (value ?? '').trim();
-  if (!trimmed) return 'Unknown';
-  return decodeMaybe(trimmed);
+  return normalizeGeoLabel(value) || 'Unknown';
 }
 
 function countryLabel(code: string): string {

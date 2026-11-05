@@ -7,6 +7,7 @@ import {
   rangeStartUtc,
   timeBucketKey,
 } from './analyticsRange.js';
+import { normalizeGeoLabel } from './geo.js';
 import { inactivityCutoffIso } from './sessions.js';
 
 const PAGE_SIZE = 1000;
@@ -128,11 +129,14 @@ async function fetchPaged<T>(
 
 function countBy(
   values: Array<string | null | undefined>,
-  limit = TOP_LIMIT
+  limit = TOP_LIMIT,
+  normalize = false
 ): NamedCount[] {
   const map = new Map<string, number>();
   for (const raw of values) {
-    const label = (raw ?? '').trim() || 'Unknown';
+    const label = normalize
+      ? normalizeGeoLabel(raw) || 'Unknown'
+      : (raw ?? '').trim() || 'Unknown';
     map.set(label, (map.get(label) ?? 0) + 1);
   }
 
@@ -163,6 +167,36 @@ function seriesFromTimestamps(
   return [...counts.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([t, count]) => ({ t, count }));
+}
+
+/** Distinct visitor IDs per time bucket (not sessions / page views). */
+function seriesFromUniqueVisitors(
+  rows: Array<{ visitorId: string | null; at: string | null }>,
+  range: AnalyticsRange,
+  bucket: TimeBucket,
+  now: Date
+): TimePoint[] {
+  const sets = new Map<string, Set<string>>();
+
+  for (const row of rows) {
+    if (!row.at || !row.visitorId) continue;
+    const key = timeBucketKey(row.at, bucket);
+    let set = sets.get(key);
+    if (!set) {
+      set = new Set<string>();
+      sets.set(key, set);
+    }
+    set.add(row.visitorId);
+  }
+
+  const empty = buildEmptyBuckets(range, now);
+  if (empty.length > 0) {
+    return empty.map((t) => ({ t, count: sets.get(t)?.size ?? 0 }));
+  }
+
+  return [...sets.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([t, set]) => ({ t, count: set.size }));
 }
 
 function inRange(iso: string | null | undefined, start: Date | null): boolean {
@@ -244,7 +278,7 @@ export async function buildPublicAnalytics(
         'id'
       ),
       // Live active is always current (not filtered by dashboard date range).
-      // Ended sessions excluded; 45s inactivity via last_seen_at.
+      // Ended sessions excluded; 60s inactivity via last_seen_at.
       supabase
         .from('visitor_sessions')
         .select('visitor_id')
@@ -270,9 +304,8 @@ export async function buildPublicAnalytics(
       .filter((id): id is string => Boolean(id))
   );
 
-  // Prefer distinct session visitor IDs for "total" when sessions exist in-range;
-  // fall back to visitors.last_seen_at rows so empty-session ranges still work.
-  const totalVisitors = Math.max(visitors.length, uniqueVisitorIds.size);
+  // Unique visitors = distinct visitor IDs with sessions in range.
+  const totalVisitors = uniqueVisitorIds.size;
 
   const pathCounts = new Map<string, number>();
   for (const row of pageViews) {
@@ -285,10 +318,11 @@ export async function buildPublicAnalytics(
     .sort((a, b) => b.views - a.views || a.path.localeCompare(b.path))
     .slice(0, TOP_LIMIT);
 
-  const visitorSeries = seriesFromTimestamps(
-    sessions
-      .map((s) => s.session_started_at)
-      .filter((v): v is string => Boolean(v)),
+  const visitorSeries = seriesFromUniqueVisitors(
+    sessions.map((s) => ({
+      visitorId: s.visitor_id,
+      at: s.session_started_at,
+    })),
     range,
     bucket,
     now
@@ -336,8 +370,12 @@ export async function buildPublicAnalytics(
       pageViewsOverTime: pageSeries,
     },
     demographics: {
-      countries: countBy(rangedSessions.map((s) => s.country)),
-      cities: countBy(rangedSessions.map((s) => s.city)),
+      countries: countBy(
+        rangedSessions.map((s) => s.country),
+        TOP_LIMIT,
+        true
+      ),
+      cities: countBy(rangedSessions.map((s) => s.city), TOP_LIMIT, true),
       browsers: countBy(rangedSessions.map((s) => s.browser)),
       operatingSystems: countBy(rangedSessions.map((s) => s.operating_system)),
       deviceTypes: countBy(rangedSessions.map((s) => s.device_type)),
