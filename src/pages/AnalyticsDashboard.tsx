@@ -220,10 +220,10 @@ function AnalyticsDashboard() {
           <div className="analytics-brand">
             <div className="analytics-brand-kicker">
               <span className="analytics-live-dot" aria-hidden="true" />
-              Public Telemetry
+              Public
             </div>
-            <h1>Visitor Analytics</h1>
-            <p>Live portfolio signals · Asia/Kolkata · no login required</p>
+            <h1>Visitor analytics</h1>
+            <p>Live portfolio traffic · Asia/Kolkata · no login</p>
           </div>
           <div className="analytics-top-actions">
             <a className="analytics-back" href="/">
@@ -296,28 +296,28 @@ function AnalyticsDashboard() {
 
             <section className="analytics-panel">
               <div className="analytics-panel-header">
-                <h2>Live Analytics</h2>
+                <h2>Live activity</h2>
                 <span>Stats 10s · Active 5s</span>
               </div>
               <div className="analytics-live-grid">
                 <div className="analytics-live-count">
                   <strong>{data.live.activeVisitors}</strong>
-                  <span>Live visitors</span>
+                  <span>Live now</span>
                 </div>
                 <div className="analytics-chart-card">
                   <h3>Visitors over time</h3>
-                  <SparkLine data={data.live.visitorsOverTime} color="#00f0ff" />
+                  <SparkLine data={data.live.visitorsOverTime} color="#c2a4ff" />
                 </div>
                 <div className="analytics-chart-card">
                   <h3>Page views over time</h3>
-                  <SparkLine data={data.live.pageViewsOverTime} color="#b44dff" />
+                  <SparkLine data={data.live.pageViewsOverTime} color="#fb8dff" />
                 </div>
               </div>
             </section>
 
             <section className="analytics-panel">
               <div className="analytics-panel-header">
-                <h2>Visitor Demographics</h2>
+                <h2>Demographics</h2>
                 <span>Aggregated only</span>
               </div>
               <div className="analytics-demo-grid">
@@ -327,7 +327,7 @@ function AnalyticsDashboard() {
                 </div>
                 <div className="analytics-chart-card">
                   <h3>City</h3>
-                  <BarList items={data.demographics.cities} color="#00f0ff" />
+                  <BarList items={data.demographics.cities} color="#fb8dff" />
                 </div>
                 <div className="analytics-chart-card">
                   <h3>Browser</h3>
@@ -335,7 +335,7 @@ function AnalyticsDashboard() {
                 </div>
                 <div className="analytics-chart-card">
                   <h3>Operating system</h3>
-                  <BarList items={data.demographics.operatingSystems} color="#00f0ff" />
+                  <BarList items={data.demographics.operatingSystems} color="#fb8dff" />
                 </div>
                 <div className="analytics-chart-card">
                   <h3>Device type</h3>
@@ -343,7 +343,10 @@ function AnalyticsDashboard() {
                 </div>
                 <div className="analytics-chart-card">
                   <h3>Screen resolution</h3>
-                  <BarList items={data.demographics.screenResolutions} color="#00f0ff" />
+                  <BarList
+                    items={data.demographics.screenResolutions}
+                    color="#fb8dff"
+                  />
                 </div>
               </div>
             </section>
@@ -351,7 +354,7 @@ function AnalyticsDashboard() {
             <div className="analytics-lower-grid">
               <section className="analytics-panel">
                 <div className="analytics-panel-header">
-                  <h2>Page Analytics</h2>
+                  <h2>Pages</h2>
                   <span>{data.pages.totalViews.toLocaleString('en-IN')} views</span>
                 </div>
                 <RankList items={data.pages.top} />
@@ -359,41 +362,37 @@ function AnalyticsDashboard() {
 
               <section className="analytics-panel">
                 <div className="analytics-panel-header">
-                  <h2>Resume Analytics</h2>
+                  <h2>Resume downloads</h2>
                   <span>
                     {data.resume.totalSuccessful.toLocaleString('en-IN')} successful
                   </span>
                 </div>
                 <div className="analytics-chart-card" style={{ marginBottom: 12 }}>
                   <h3>Download trends</h3>
-                  <SparkLine data={data.resume.overTime} color="#3dff9a" />
+                  <SparkLine data={data.resume.overTime} color="#7dffa6" />
                 </div>
                 <div className="analytics-chart-card">
                   <h3>By filename</h3>
-                  <BarList items={data.resume.byFilename} color="#3dff9a" />
+                  <BarList items={data.resume.byFilename} color="#7dffa6" />
                 </div>
               </section>
 
               <section className="analytics-panel">
                 <div className="analytics-panel-header">
-                  <h2>Signal Health</h2>
+                  <h2>Privacy</h2>
                   <span>Public feed</span>
                 </div>
-                <div className="analytics-chart-card">
-                  <h3>Privacy</h3>
-                  <p className="analytics-empty-inline" style={{ textAlign: 'left' }}>
-                    This dashboard exposes aggregated counts only. Visitor IDs,
-                    session IDs, IP hashes, and individual browsing histories are
-                    never returned by the public API.
-                  </p>
-                </div>
+                <p className="analytics-empty-inline" style={{ textAlign: 'left', padding: 0 }}>
+                  Aggregated counts only. Visitor IDs, session IDs, IP hashes,
+                  and browsing histories are never exposed.
+                </p>
               </section>
             </div>
           </div>
         ) : null}
 
         <p className="analytics-footer-note">
-          TELEMETRY NODE · REAL SUPABASE AGGREGATES · RANGE {range.toUpperCase()}
+          Live Supabase aggregates · Asia/Kolkata · {range.toUpperCase()}
         </p>
       </div>
     </div>

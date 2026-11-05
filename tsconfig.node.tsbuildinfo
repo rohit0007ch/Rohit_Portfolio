@@ -1,1 +1,1 @@
-{"root":["./vite.config.ts"],"version":"5.9.3"}
+{"root":["./vite.config.ts","./api/health.ts","./api/loadlocalenv.ts","./api/_lib/analyticsaggregate.ts","./api/_lib/analyticsrange.ts","./api/_lib/geo.ts","./api/_lib/http.ts","./api/_lib/livetelemetry.ts","./api/_lib/sessions.ts","./api/_lib/supabaseadmin.ts","./api/_lib/validate.ts","./api/analytics/live.ts","./api/analytics/public.ts","./api/track/heartbeat.ts","./api/track/pageview.ts","./api/track/resume.ts","./api/track/session.ts"],"version":"5.9.3"}

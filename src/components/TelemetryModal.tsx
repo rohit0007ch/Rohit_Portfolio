@@ -1,15 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  FiActivity,
-  FiClock,
-  FiGlobe,
-  FiMapPin,
-  FiMonitor,
-  FiNavigation,
-  FiShield,
-  FiWifi,
-} from 'react-icons/fi';
-import { HiOutlineDesktopComputer } from 'react-icons/hi';
 import { fetchLiveTelemetry } from '../lib/analytics/fetchLiveTelemetry';
 import type {
   AnonymizedSession,
@@ -50,7 +39,7 @@ const COUNTRY_FLAGS: Record<string, string> = {
 };
 
 function browserLabel(session: AnonymizedSession): string {
-  const name = session.browser === 'Unknown' ? 'Unknown Browser' : session.browser;
+  const name = session.browser === 'Unknown' ? 'Unknown' : session.browser;
   if (session.browserVersion !== 'Unknown') {
     return `${name} ${session.browserVersion}`;
   }
@@ -70,49 +59,23 @@ function cityPostalLabel(session: AnonymizedSession): string {
 function regionCountryLabel(session: AnonymizedSession): string {
   const region = session.region !== 'Unknown' ? session.region : null;
   const country = session.country !== 'Unknown' ? session.country : null;
-  if (region && country) return `${region} (${country})`;
-  if (region) return region;
-  if (country) return country;
-  return 'Unavailable';
+  if (region && country) return `${region}, ${country}`;
+  return region || country || 'Unavailable';
 }
 
 function idleBadge(session: AnonymizedSession): string {
-  if (session.isLive) return 'LIVE';
+  if (session.isLive) return 'Live';
   const relative = session.lastSeenRelative;
-  if (relative.endsWith('s ago')) {
-    return relative.replace(' ago', '');
-  }
+  if (relative.endsWith('s ago')) return relative.replace(' ago', '');
   if (relative.endsWith('m ago')) {
-    const mins = relative.replace('m ago', '');
-    return `${mins.padStart(2, '0')}m`;
+    return `${relative.replace('m ago', '').padStart(2, '0')}m`;
   }
-  if (relative.endsWith('h ago')) {
-    return relative.replace(' ago', '');
-  }
+  if (relative.endsWith('h ago')) return relative.replace(' ago', '');
   return 'Idle';
 }
 
 function countryFlag(country: string): string {
   return COUNTRY_FLAGS[country] ?? '🌐';
-}
-
-function formatClock(iso: string | undefined): string {
-  if (!iso) return '—';
-  try {
-    return new Intl.DateTimeFormat('en-IN', {
-      timeZone: 'Asia/Kolkata',
-      weekday: 'long',
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true,
-    }).format(new Date(iso));
-  } catch {
-    return '—';
-  }
 }
 
 const TelemetryModal = ({ open, onClose }: TelemetryModalProps) => {
@@ -176,14 +139,12 @@ const TelemetryModal = ({ open, onClose }: TelemetryModalProps) => {
     };
 
     const load = async (isInitial: boolean) => {
-      if (inFlight) {
-        return;
-      }
+      if (inFlight) return;
 
       const controller = new AbortController();
       inFlight = controller;
-
       if (isInitial) setLoading(true);
+
       try {
         const payload = await fetchLiveTelemetry(controller.signal);
         if (cancelled) return;
@@ -212,9 +173,7 @@ const TelemetryModal = ({ open, onClose }: TelemetryModalProps) => {
         }
         setError(err instanceof Error ? err.message : 'Failed to load telemetry');
       } finally {
-        if (inFlight === controller) {
-          inFlight = null;
-        }
+        if (inFlight === controller) inFlight = null;
         if (!cancelled) setLoading(false);
       }
     };
@@ -238,9 +197,7 @@ const TelemetryModal = ({ open, onClose }: TelemetryModalProps) => {
     };
 
     void load(true);
-    if (document.visibilityState === 'visible') {
-      startPolling();
-    }
+    if (document.visibilityState === 'visible') startPolling();
     document.addEventListener('visibilitychange', onVisibility);
 
     return () => {
@@ -259,11 +216,34 @@ const TelemetryModal = ({ open, onClose }: TelemetryModalProps) => {
 
   if (!open) return null;
 
-  const visibleSessions = data?.sessions.slice(0, 6) ?? [];
+  const visibleSessions = data?.sessions.slice(0, 5) ?? [];
   const selected: AnonymizedSession | null =
     visibleSessions.find((session) => session.sessionKey === selectedKey) ??
     visibleSessions[0] ??
     null;
+
+  const detailRows = selected
+    ? [
+        { label: 'IP', value: 'Protected' },
+        { label: 'City', value: cityPostalLabel(selected) },
+        {
+          label: 'Device',
+          value: `${selected.deviceType} · ${selected.operatingSystem}`,
+        },
+        { label: 'Region', value: regionCountryLabel(selected) },
+        { label: 'Browser', value: browserLabel(selected) },
+        {
+          label: 'Display',
+          value: `${selected.screenResolution} · ${selected.timezone}`,
+        },
+        {
+          label: 'Started',
+          value: `${selected.startedAtLabel}${
+            selected.isLive ? ' · Active' : ' · Idle'
+          }`,
+        },
+      ]
+    : [];
 
   return (
     <div
@@ -277,234 +257,139 @@ const TelemetryModal = ({ open, onClose }: TelemetryModalProps) => {
         className="telemetry-modal"
         role="dialog"
         aria-modal="true"
-        aria-label="Real-time visitor telemetry"
+        aria-label="Visitor telemetry"
         data-cursor="disable"
       >
-        <div className="telemetry-modal-scroll">
-          <header className="telemetry-header">
-            <div className="telemetry-header-copy">
-              <h2 className="telemetry-title">Real-Time Visitor Telemetry</h2>
-              <p className="telemetry-tracking">
-                <span className="telemetry-pulse" aria-hidden="true" />
-                Tracking Active · Asia/Kolkata
-              </p>
-            </div>
-            <button
-              type="button"
-              className="telemetry-close"
-              aria-label="Close telemetry"
-              onClick={onClose}
-            >
-              ×
+        <header className="telemetry-header">
+          <div>
+            <p className="telemetry-kicker">
+              <span className="telemetry-pulse" aria-hidden="true" />
+              Live visitors
+            </p>
+            <h2 className="telemetry-title">Telemetry</h2>
+          </div>
+          <button
+            type="button"
+            className="telemetry-close"
+            aria-label="Close telemetry"
+            onClick={onClose}
+          >
+            ×
+          </button>
+        </header>
+
+        {loading && !data ? (
+          <div className="telemetry-state">Loading…</div>
+        ) : null}
+
+        {error && !data ? (
+          <div className="telemetry-state is-error">
+            <div>{error}</div>
+            <button type="button" onClick={() => setRetryToken((n) => n + 1)}>
+              Retry
             </button>
-          </header>
+          </div>
+        ) : null}
 
-          {loading && !data ? (
-            <div className="telemetry-state">Syncing live signals…</div>
-          ) : null}
-
-          {error && !data ? (
-            <div className="telemetry-state is-error">
-              <div>{error}</div>
-              <button type="button" onClick={() => setRetryToken((n) => n + 1)}>
-                Retry
-              </button>
-            </div>
-          ) : null}
-
-          {data ? (
-            <>
-              <div className="telemetry-banner">
-                <div className="telemetry-banner-main">
-                  <p className="telemetry-banner-text">{data.watchingLabel}</p>
-                  <p className="telemetry-banner-sub">
-                    Active Session: {activeSessionClock} |{' '}
-                    {formatClock(data.updatedAt)} IST
-                  </p>
-                </div>
-                <div className="telemetry-live-pill">
-                  <span className="telemetry-live-pill-dot" aria-hidden="true" />
-                  Live Now
-                </div>
-              </div>
-
-              <div className="telemetry-stats">
-                <article className="telemetry-stat">
-                  <strong>{data.overview.totalVisitors}</strong>
-                  <span>Total Visitor Count</span>
-                </article>
-                <article className="telemetry-stat">
-                  <strong>{data.overview.uniqueDevices}</strong>
-                  <span>Unique Devices</span>
-                </article>
-                <article className="telemetry-stat is-live">
-                  <strong>
-                    {data.overview.activeWatchers}
-                    <em> Live</em>
-                  </strong>
-                  <span>Active Watchers</span>
-                </article>
-              </div>
-
-              <div className="telemetry-body">
-                <section className="telemetry-panel">
-                  <h3>Active &amp; Recorded Sessions</h3>
-                  {visibleSessions.length === 0 ? (
-                    <div className="telemetry-state">No sessions yet</div>
-                  ) : (
-                    <ul className="telemetry-session-list">
-                      {visibleSessions.map((session) => (
-                        <li key={session.sessionKey}>
-                          <button
-                            type="button"
-                            className={`telemetry-session-item${
-                              selected?.sessionKey === session.sessionKey
-                                ? ' is-selected'
-                                : ''
-                            }`}
-                            onClick={() => {
-                              selectedKeyRef.current = session.sessionKey;
-                              setSelectedKey(session.sessionKey);
-                            }}
-                          >
-                            <div className="telemetry-session-meta">
-                              <strong>
-                                {session.label}{' '}
-                                <span className="telemetry-session-device">
-                                  ({session.deviceType})
-                                </span>
-                              </strong>
-                              <span className="telemetry-session-place">
-                                <span aria-hidden="true">
-                                  {countryFlag(session.country)}
-                                </span>
-                                {session.locationLabel}
-                              </span>
-                            </div>
-                            <span
-                              className={`telemetry-badge ${
-                                session.isLive ? 'is-live' : 'is-idle'
-                              }`}
-                            >
-                              {idleBadge(session)}
-                            </span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </section>
-
-                <section className="telemetry-panel">
-                  <h3>
-                    {selected
-                      ? `Inspecting: ${selected.label} (${selected.deviceType})`
-                      : 'Session details'}
-                  </h3>
-                  {!selected ? (
-                    <div className="telemetry-state">Select a session</div>
-                  ) : (
-                    <>
-                      <div className="telemetry-details-grid">
-                        <div className="telemetry-detail">
-                          <span>
-                            <FiShield aria-hidden="true" /> IP Address
-                          </span>
-                          <strong>Protected</strong>
-                        </div>
-                        <div className="telemetry-detail">
-                          <span>
-                            <FiMapPin aria-hidden="true" /> City &amp; Postal
-                          </span>
-                          <strong>{cityPostalLabel(selected)}</strong>
-                        </div>
-                        <div className="telemetry-detail">
-                          <span>
-                            <HiOutlineDesktopComputer aria-hidden="true" />{' '}
-                            Device &amp; Operating System
-                          </span>
-                          <strong>
-                            {selected.deviceType} ({selected.operatingSystem})
-                          </strong>
-                        </div>
-                        <div className="telemetry-detail">
-                          <span>
-                            <FiWifi aria-hidden="true" /> Network Provider &amp;
-                            ISP
-                          </span>
-                          <strong>Unavailable</strong>
-                        </div>
-                        <div className="telemetry-detail">
-                          <span>
-                            <FiNavigation aria-hidden="true" /> State &amp;
-                            Region
-                          </span>
-                          <strong>{regionCountryLabel(selected)}</strong>
-                        </div>
-                        <div className="telemetry-detail">
-                          <span>
-                            <FiGlobe aria-hidden="true" /> Browser &amp; Engine
-                          </span>
-                          <strong>{browserLabel(selected)}</strong>
-                        </div>
-                        <div className="telemetry-detail">
-                          <span>
-                            <FiMonitor aria-hidden="true" /> Resolution &amp;
-                            Timezone
-                          </span>
-                          <strong>
-                            {selected.screenResolution} | {selected.timezone}
-                          </strong>
-                        </div>
-                        <div className="telemetry-detail">
-                          <span>
-                            <FiClock aria-hidden="true" /> Session Timestamp
-                            &amp; Status
-                          </span>
-                          <strong>
-                            {selected.startedAtLabel}{' '}
-                            <em className={selected.isLive ? 'is-live' : ''}>
-                              ({selected.isLive ? 'Active Now' : 'Idle'})
-                            </em>
-                          </strong>
-                        </div>
-                      </div>
-                      <div className="telemetry-detail-footer">
-                        <span
-                          className={
-                            selected.isLive
-                              ? 'telemetry-status-live'
-                              : 'telemetry-status-idle'
-                          }
-                        >
-                          <FiActivity aria-hidden="true" />
-                          Current Status: {selected.isLive ? 'Live' : 'Idle'}
-                        </span>
-                        <span>
-                          {selected.lastSeenRelative}
-                          <span className="telemetry-footer-abs">
-                            {' '}
-                            · {selected.lastSeenAtLabel}
-                          </span>
-                        </span>
-                      </div>
-                    </>
-                  )}
-                </section>
-              </div>
-
-              <div className="telemetry-link-row">
-                <span className="telemetry-updated">
-                  Updated {data.updatedAtLabel} · live refresh 5s
-                  {error ? ' · last refresh failed' : ''}
+        {data ? (
+          <div className="telemetry-content">
+            <div className="telemetry-watch">
+              <div>
+                <strong>{data.watchingLabel}</strong>
+                <span>
+                  Session {activeSessionClock} · {data.updatedAtLabel}
                 </span>
-                <a className="telemetry-full-link" href="/analytics">
-                  Open full analytics →
-                </a>
               </div>
-            </>
-          ) : null}
-        </div>
+              <span className="telemetry-live-tag">Live</span>
+            </div>
+
+            <div className="telemetry-stats">
+              <div>
+                <strong>{data.overview.totalVisitors}</strong>
+                <span>Visitors</span>
+              </div>
+              <div>
+                <strong>{data.overview.uniqueDevices}</strong>
+                <span>Devices</span>
+              </div>
+              <div className="is-live">
+                <strong>{data.overview.activeWatchers}</strong>
+                <span>Watching</span>
+              </div>
+            </div>
+
+            <section className="telemetry-section">
+              <h3>Sessions</h3>
+              {visibleSessions.length === 0 ? (
+                <div className="telemetry-state compact">No sessions yet</div>
+              ) : (
+                <ul className="telemetry-session-list">
+                  {visibleSessions.map((session) => (
+                    <li key={session.sessionKey}>
+                      <button
+                        type="button"
+                        className={`telemetry-session-item${
+                          selected?.sessionKey === session.sessionKey
+                            ? ' is-selected'
+                            : ''
+                        }`}
+                        onClick={() => {
+                          selectedKeyRef.current = session.sessionKey;
+                          setSelectedKey(session.sessionKey);
+                        }}
+                      >
+                        <div className="telemetry-session-meta">
+                          <strong>
+                            {session.label}
+                            <span> · {session.deviceType}</span>
+                          </strong>
+                          <em>
+                            {countryFlag(session.country)} {session.locationLabel}
+                          </em>
+                        </div>
+                        <span
+                          className={`telemetry-badge ${
+                            session.isLive ? 'is-live' : 'is-idle'
+                          }`}
+                        >
+                          {idleBadge(session)}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section className="telemetry-section">
+              <h3>
+                {selected
+                  ? `${selected.label} details`
+                  : 'Session details'}
+              </h3>
+              {!selected ? (
+                <div className="telemetry-state compact">Select a session</div>
+              ) : (
+                <dl className="telemetry-facts">
+                  {detailRows.map((row) => (
+                    <div key={row.label}>
+                      <dt>{row.label}</dt>
+                      <dd>{row.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+            </section>
+
+            <footer className="telemetry-footer">
+              <span>
+                Auto-refresh 5s
+                {error ? ' · refresh failed' : ''}
+              </span>
+              <a href="/analytics">Full analytics</a>
+            </footer>
+          </div>
+        ) : null}
       </div>
     </div>
   );

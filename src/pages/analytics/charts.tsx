@@ -14,7 +14,7 @@ function shortLabel(t: string): string {
 
 export function SparkLine({
   data,
-  color = '#00f0ff',
+  color = '#c2a4ff',
 }: {
   data: TimePoint[];
   color?: string;
@@ -82,7 +82,7 @@ export function SparkLine({
 
 export function BarList({
   items,
-  color = '#b44dff',
+  color = '#c2a4ff',
 }: {
   items: NamedCount[];
   color?: string;
@@ -106,7 +106,7 @@ export function BarList({
               className="analytics-bar-fill"
               style={{
                 width: `${Math.max(4, (item.count / max) * 100)}%`,
-                background: `linear-gradient(90deg, ${color}, #00f0ff)`,
+                background: `linear-gradient(90deg, ${color}, #fb8dff)`,
               }}
             />
           </div>
