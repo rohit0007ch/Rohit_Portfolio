@@ -25,6 +25,7 @@ export interface LiveTelemetry {
   timezone: string;
   updatedAt: string;
   updatedAtLabel: string;
+  trackingStartedLabel?: string;
   overview: {
     totalVisitors: number;
     uniqueDevices: number;

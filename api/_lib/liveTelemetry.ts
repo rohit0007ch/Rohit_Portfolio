@@ -48,6 +48,7 @@ export interface LiveTelemetryPayload {
   timezone: string;
   updatedAt: string;
   updatedAtLabel: string;
+  trackingStartedLabel: string;
   overview: {
     totalVisitors: number;
     uniqueDevices: number;
@@ -134,12 +135,14 @@ function buildLocationLabel(
   region: string,
   country: string
 ): string {
-  const niceCountry = countryLabel(country);
-  const parts = [city !== 'Unknown' ? city : null, niceCountry !== 'Unknown' ? niceCountry : null].filter(
-    Boolean
-  );
-  if (parts.length) return parts.join(', ');
+  // Reference pills use "City, Region" when available.
+  if (city !== 'Unknown' && region !== 'Unknown' && region !== city) {
+    return `${city}, ${region}`;
+  }
+  if (city !== 'Unknown') return city;
   if (region !== 'Unknown') return region;
+  const niceCountry = countryLabel(country);
+  if (niceCountry !== 'Unknown') return niceCountry;
   return 'Location unavailable';
 }
 
@@ -149,7 +152,8 @@ function toAnonymized(
   activeCutoffMs: number,
   ordinal: number
 ): AnonymizedSession {
-  const deviceType = displayOrUnknown(row.device_type);
+  const rawDevice = displayOrUnknown(row.device_type);
+  const deviceType = deviceLabel(rawDevice);
   const city = displayOrUnknown(row.city);
   const region = displayOrUnknown(row.region);
   const country = displayOrUnknown(row.country);
@@ -158,9 +162,9 @@ function toAnonymized(
 
   return {
     sessionKey,
-    label: `Visitor #${ordinal}`,
+    label: `Visitor #${ordinal} (${deviceType})`,
     isLive: live,
-    deviceType: deviceLabel(deviceType),
+    deviceType,
     operatingSystem: displayOrUnknown(row.operating_system),
     browser: displayOrUnknown(row.browser),
     browserVersion: displayOrUnknown(row.browser_version),
@@ -211,10 +215,16 @@ export async function buildLiveTelemetry(
 
   const [
     { count: totalVisitors, error: visitorsError },
+    { data: firstVisitor, error: firstVisitorError },
     { data: liveRows, error: liveError },
     { data: recentRows, error: recentError },
   ] = await Promise.all([
     supabase.from('visitors').select('id', { count: 'exact', head: true }),
+    supabase
+      .from('visitors')
+      .select('first_seen_at')
+      .order('first_seen_at', { ascending: true })
+      .limit(1),
     supabase
       .from('visitor_sessions')
       .select(sessionColumns)
@@ -230,6 +240,7 @@ export async function buildLiveTelemetry(
   ]);
 
   if (visitorsError) throw visitorsError;
+  if (firstVisitorError) throw firstVisitorError;
   if (liveError) throw liveError;
   if (recentError) throw recentError;
 
@@ -271,9 +282,14 @@ export async function buildLiveTelemetry(
     toAnonymized(row, nowMs, activeCutoffMs, ordinalById.get(row.id) ?? 1)
   );
 
-  const activeWatchers = ((liveRows ?? []) as unknown as SessionRow[]).filter(
-    (row) => isSessionLive(row, activeCutoffMs)
-  ).length;
+  // Reference logic: active = distinct devices with lastSeen within ~60s.
+  const activeVisitorIds = new Set(
+    ((liveRows ?? []) as unknown as SessionRow[])
+      .filter((row) => isSessionLive(row, activeCutoffMs))
+      .map((row) => row.visitor_id)
+      .filter((id): id is string => Boolean(id))
+  );
+  const activeWatchers = activeVisitorIds.size;
   const watchingLabel =
     activeWatchers === 1
       ? '1 DEVICE CURRENTLY WATCHING'
@@ -281,11 +297,18 @@ export async function buildLiveTelemetry(
 
   // In this schema one visitor UUID ~= one anonymous device.
   const visitorTotal = totalVisitors ?? 0;
+  const firstSeen = Array.isArray(firstVisitor)
+    ? firstVisitor[0]?.first_seen_at
+    : null;
+  const trackingStartedLabel = firstSeen
+    ? formatKolkataTimestamp(new Date(firstSeen))
+    : formatKolkataTimestamp(new Date(nowIso));
 
   return {
     timezone: 'Asia/Kolkata',
     updatedAt: nowIso,
     updatedAtLabel: formatKolkataTimestamp(new Date(nowIso)),
+    trackingStartedLabel,
     overview: {
       totalVisitors: visitorTotal,
       uniqueDevices: visitorTotal,
