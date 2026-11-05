@@ -62,6 +62,38 @@
   color: #fff;
 }
 
+.navbar-eye-btn.is-live {
+  border-color: rgba(16, 185, 129, 0.65);
+  color: #7ee6d7;
+}
+
+.navbar-eye-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  flex-shrink: 0;
+  opacity: 0.45;
+}
+
+.navbar-eye-btn.is-live .navbar-eye-live-dot {
+  opacity: 1;
+  animation: navbar-eye-pulse 1.6s ease-out infinite;
+}
+
+@keyframes navbar-eye-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
 .navbar-eye-icon {
   width: 13px;
   height: 13px;

@@ -10,14 +10,15 @@ import "./styles/Navbar.css";
 gsap.registerPlugin(ScrollSmoother, ScrollTrigger);
 export let smoother: ScrollSmoother;
 
-const EYE_COUNT_REFRESH_MS = 15_000;
+/** Keep under the 60s active-session window so the eye count stays live. */
+const EYE_COUNT_REFRESH_MS = 5_000;
 
 interface NavbarProps {
   onLiveClick?: () => void;
 }
 
 const Navbar = ({ onLiveClick }: NavbarProps) => {
-  const [visitorCount, setVisitorCount] = useState<number | null>(null);
+  const [liveCount, setLiveCount] = useState<number | null>(null);
 
   useEffect(() => {
     smoother = ScrollSmoother.create({
@@ -61,7 +62,8 @@ const Navbar = ({ onLiveClick }: NavbarProps) => {
       try {
         const payload = await fetchLiveTelemetry(controller.signal);
         if (!cancelled) {
-          setVisitorCount(payload.overview.totalVisitors);
+          // Eye badge = currently live watchers (60s last_seen window), not totals.
+          setLiveCount(payload.overview.activeWatchers);
         }
       } catch {
         // Keep last known count; eye button still opens the modal.
@@ -140,15 +142,24 @@ const Navbar = ({ onLiveClick }: NavbarProps) => {
           <li>
             <button
               type="button"
-              className="navbar-eye-btn"
+              className={`navbar-eye-btn${
+                liveCount != null && liveCount > 0 ? " is-live" : ""
+              }`}
               data-cursor="disable"
               onClick={onLiveClick}
-              aria-label="Open real-time visitor telemetry"
-              title="Visitor telemetry"
+              aria-label={`Open live visitor telemetry${
+                liveCount != null ? `, ${liveCount} watching now` : ""
+              }`}
+              title={
+                liveCount != null
+                  ? `${liveCount} live now`
+                  : "Live visitor telemetry"
+              }
             >
+              <span className="navbar-eye-live-dot" aria-hidden="true" />
               <IoEyeOutline className="navbar-eye-icon" aria-hidden="true" />
               <span className="navbar-eye-count">
-                {visitorCount == null ? "—" : visitorCount.toLocaleString("en-IN")}
+                {liveCount == null ? "—" : liveCount.toLocaleString("en-IN")}
               </span>
             </button>
           </li>
