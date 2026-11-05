@@ -6,8 +6,8 @@ import {
   rotateSessionId,
 } from './ids';
 
-/** Keep well under the 60s server inactivity window (reference uses ~10s). */
-const HEARTBEAT_INTERVAL_MS = 10_000;
+/** Faster heartbeats keep last_seen fresh so live counts update quickly. */
+const HEARTBEAT_INTERVAL_MS = 5_000;
 
 interface TrackApiResponse {
   success?: boolean;
@@ -150,6 +150,7 @@ async function recordPageView(pagePath: string): Promise<void> {
 
 function startHeartbeat(): void {
   stopHeartbeat();
+  void sendHeartbeat();
   heartbeatTimer = setInterval(() => {
     void sendHeartbeat();
   }, HEARTBEAT_INTERVAL_MS);

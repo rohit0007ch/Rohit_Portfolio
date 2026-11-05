@@ -4,12 +4,15 @@ import {
   sendJson,
   setCorsHeaders,
 } from '../_lib/http.js';
-import { expireStaleSessions, utcNowIso } from '../_lib/sessions.js';
+import { utcNowIso } from '../_lib/sessions.js';
 import { getSupabaseAdmin } from '../_lib/supabaseAdmin.js';
 
 /**
  * GET /api/analytics/live
  * Public anonymized live telemetry — no visitor/session UUIDs, IPs, or IP hashes.
+ *
+ * Skips expireStaleSessions on this hot path so eye-button / modal polls stay fast.
+ * Active counts already filter on last_seen_at within the inactivity window.
  */
 export default async function handler(req: any, res: any) {
   setCorsHeaders(res, 'GET, OPTIONS');
@@ -34,8 +37,6 @@ export default async function handler(req: any, res: any) {
 
     const supabase = getSupabaseAdmin();
     const nowIso = utcNowIso();
-    await expireStaleSessions(supabase, nowIso);
-
     const payload = await buildLiveTelemetry(supabase, nowIso);
 
     // Live feed must never be cached by browsers/CDNs.

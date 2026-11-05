@@ -6,8 +6,8 @@ import type {
 } from '../lib/analytics/liveTypes';
 import './styles/TelemetryModal.css';
 
-/** Match reference sync cadence (~10s) while staying under the 60s active window. */
-const REFRESH_MS = 10_000;
+/** Fast poll so live watcher counts feel real-time. */
+const REFRESH_MS = 3_000;
 
 interface TelemetryModalProps {
   open: boolean;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ScrollTrigger from "gsap/ScrollTrigger";
 import HoverLinks from "./HoverLinks";
 import gsap from "gsap";
@@ -10,8 +10,8 @@ import "./styles/Navbar.css";
 gsap.registerPlugin(ScrollSmoother, ScrollTrigger);
 export let smoother: ScrollSmoother;
 
-/** Keep under the 60s active-session window so the eye count stays live. */
-const EYE_COUNT_REFRESH_MS = 5_000;
+/** Eye badge polls live active watchers frequently. */
+const EYE_COUNT_REFRESH_MS = 2_000;
 
 interface NavbarProps {
   onLiveClick?: () => void;
@@ -19,6 +19,7 @@ interface NavbarProps {
 
 const Navbar = ({ onLiveClick }: NavbarProps) => {
   const [liveCount, setLiveCount] = useState<number | null>(null);
+  const refreshLiveCountRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     smoother = ScrollSmoother.create({
@@ -55,8 +56,13 @@ const Navbar = ({ onLiveClick }: NavbarProps) => {
     let inFlight: AbortController | null = null;
     let timer: number | null = null;
 
-    const loadCount = async () => {
-      if (inFlight || document.visibilityState === "hidden") return;
+    const loadCount = async (force = false) => {
+      if (document.visibilityState === "hidden") return;
+      if (inFlight) {
+        if (!force) return;
+        inFlight.abort();
+      }
+
       const controller = new AbortController();
       inFlight = controller;
       try {
@@ -72,10 +78,14 @@ const Navbar = ({ onLiveClick }: NavbarProps) => {
       }
     };
 
+    refreshLiveCountRef.current = () => {
+      void loadCount(true);
+    };
+
     const start = () => {
       if (timer != null) window.clearInterval(timer);
       timer = window.setInterval(() => {
-        void loadCount();
+        void loadCount(false);
       }, EYE_COUNT_REFRESH_MS);
     };
 
@@ -89,16 +99,17 @@ const Navbar = ({ onLiveClick }: NavbarProps) => {
         inFlight = null;
         return;
       }
-      void loadCount();
+      void loadCount(true);
       start();
     };
 
-    void loadCount();
+    void loadCount(true);
     if (document.visibilityState === "visible") start();
     document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
       cancelled = true;
+      refreshLiveCountRef.current = null;
       if (timer != null) window.clearInterval(timer);
       inFlight?.abort();
       document.removeEventListener("visibilitychange", onVisibility);
@@ -146,7 +157,10 @@ const Navbar = ({ onLiveClick }: NavbarProps) => {
                 liveCount != null && liveCount > 0 ? " is-live" : ""
               }`}
               data-cursor="disable"
-              onClick={onLiveClick}
+              onClick={() => {
+                refreshLiveCountRef.current?.();
+                onLiveClick?.();
+              }}
               aria-label={`Open live visitor telemetry${
                 liveCount != null ? `, ${liveCount} watching now` : ""
               }`}

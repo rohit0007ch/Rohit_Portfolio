@@ -7,7 +7,7 @@ import { BarList, RankList, SparkLine } from './analytics/charts';
 import './analytics/analytics.css';
 
 const STATS_REFRESH_MS = 10_000;
-const ACTIVE_REFRESH_MS = 5_000;
+const ACTIVE_REFRESH_MS = 3_000;
 
 const RANGE_OPTIONS: Array<{ id: AnalyticsRange; label: string }> = [
   { id: 'today', label: 'Today' },
