@@ -15,6 +15,7 @@ const TOP_LIMIT = 12;
 
 interface VisitorRow {
   first_seen_at: string | null;
+  last_seen_at: string | null;
 }
 
 interface SessionRow {
@@ -92,14 +93,20 @@ async function fetchPaged<T>(
   supabase: SupabaseClient,
   table: string,
   columns: string,
-  applyFilters: (query: any) => any
+  applyFilters: (query: any) => any,
+  orderColumn: string
 ): Promise<T[]> {
   const rows: T[] = [];
   let from = 0;
 
   while (from < MAX_ROWS) {
     const to = from + PAGE_SIZE - 1;
-    let query = supabase.from(table).select(columns).range(from, to);
+    // ORDER BY is required for deterministic range pagination.
+    let query = supabase
+      .from(table)
+      .select(columns)
+      .order(orderColumn, { ascending: true })
+      .range(from, to);
     query = applyFilters(query);
 
     const { data, error } = await query;
@@ -176,8 +183,10 @@ export async function buildPublicAnalytics(
   const bucket = bucketGranularity(range);
   const activeCutoff = inactivityCutoffIso(now);
 
+  // Visitors active in-range: last_seen_at (NOT first_seen_at).
+  // first_seen_at undercounts returning visitors (e.g. today=0 while sessions>0).
   const visitorFilter = (q: any) =>
-    startIso ? q.gte('first_seen_at', startIso) : q;
+    startIso ? q.gte('last_seen_at', startIso) : q;
 
   const sessionFilter = (q: any) =>
     startIso ? q.gte('session_started_at', startIso) : q;
@@ -198,8 +207,9 @@ export async function buildPublicAnalytics(
       fetchPaged<VisitorRow>(
         supabase,
         'visitors',
-        'first_seen_at',
-        visitorFilter
+        'first_seen_at,last_seen_at',
+        visitorFilter,
+        'id'
       ),
       fetchPaged<SessionRow>(
         supabase,
@@ -216,26 +226,31 @@ export async function buildPublicAnalytics(
           'device_type',
           'screen_resolution',
         ].join(','),
-        sessionFilter
+        sessionFilter,
+        'id'
       ),
       fetchPaged<PageViewRow>(
         supabase,
         'page_views',
         'page_path,viewed_at',
-        pageFilter
+        pageFilter,
+        'id'
       ),
       fetchPaged<ResumeRow>(
         supabase,
         'resume_downloads',
         'filename,downloaded_at,download_status',
-        resumeFilter
+        resumeFilter,
+        'id'
       ),
       // Live active is always current (not filtered by dashboard date range).
+      // Ended sessions excluded; 45s inactivity via last_seen_at.
       supabase
         .from('visitor_sessions')
         .select('visitor_id')
         .is('session_ended_at', null)
         .gte('last_seen_at', activeCutoff)
+        .order('id', { ascending: true })
         .limit(PAGE_SIZE),
     ]);
 
@@ -254,6 +269,10 @@ export async function buildPublicAnalytics(
       .map((s) => s.visitor_id)
       .filter((id): id is string => Boolean(id))
   );
+
+  // Prefer distinct session visitor IDs for "total" when sessions exist in-range;
+  // fall back to visitors.last_seen_at rows so empty-session ranges still work.
+  const totalVisitors = Math.max(visitors.length, uniqueVisitorIds.size);
 
   const pathCounts = new Map<string, number>();
   for (const row of pageViews) {
@@ -298,13 +317,13 @@ export async function buildPublicAnalytics(
     inRange(s.session_started_at, start)
   );
 
-  return {
+  const payload: PublicAnalyticsPayload = {
     range,
     timezone: 'Asia/Kolkata',
     updatedAt: now.toISOString(),
     updatedAtLabel,
     overview: {
-      totalVisitors: visitors.length,
+      totalVisitors,
       uniqueVisitors: uniqueVisitorIds.size,
       activeVisitors: activeVisitorIds.size,
       totalSessions: rangedSessions.length,
@@ -334,4 +353,25 @@ export async function buildPublicAnalytics(
       overTime: resumeSeries,
     },
   };
+
+  if (
+    process.env.NODE_ENV !== 'production' ||
+    process.env.ANALYTICS_DEBUG === '1'
+  ) {
+    console.log('[analyticsAggregate] computed', {
+      range,
+      startIso,
+      activeCutoff,
+      rows: {
+        visitors: visitors.length,
+        sessions: sessions.length,
+        pageViews: pageViews.length,
+        resumes: resumes.length,
+        activeSessionRows: activeSessions.data?.length ?? 0,
+      },
+      overview: payload.overview,
+    });
+  }
+
+  return payload;
 }

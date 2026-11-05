@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useVisitorTracking } from '../hooks/useVisitorTracking';
+import { fetchLiveTelemetry } from '../lib/analytics/fetchLiveTelemetry';
 import { fetchPublicAnalytics } from '../lib/analytics/fetchPublicAnalytics';
 import type { AnalyticsRange, PublicAnalytics } from '../lib/analytics/types';
 import { BarList, RankList, SparkLine } from './analytics/charts';
 import './analytics/analytics.css';
 
-const REFRESH_MS = 10_000;
+const STATS_REFRESH_MS = 10_000;
+const ACTIVE_REFRESH_MS = 5_000;
 
 const RANGE_OPTIONS: Array<{ id: AnalyticsRange; label: string }> = [
   { id: 'today', label: 'Today' },
@@ -26,6 +28,12 @@ const OVERVIEW_CARDS: Array<{
   { key: 'resumeDownloads', label: 'Resume Downloads' },
 ];
 
+function analyticsDebug(...args: unknown[]): void {
+  if (import.meta.env.DEV) {
+    console.log('[AnalyticsDashboard]', ...args);
+  }
+}
+
 function AnalyticsDashboard() {
   useVisitorTracking();
 
@@ -36,39 +44,165 @@ function AnalyticsDashboard() {
   const [refreshToken, setRefreshToken] = useState(0);
 
   useEffect(() => {
-    const controller = new AbortController();
     let cancelled = false;
+    let statsInFlight: AbortController | null = null;
+    let activeInFlight: AbortController | null = null;
+    let statsTimer: number | null = null;
+    let activeTimer: number | null = null;
 
-    const load = async (isInitial: boolean) => {
+    const clearTimers = () => {
+      if (statsTimer != null) {
+        window.clearInterval(statsTimer);
+        statsTimer = null;
+      }
+      if (activeTimer != null) {
+        window.clearInterval(activeTimer);
+        activeTimer = null;
+      }
+    };
+
+    const loadStats = async (isInitial: boolean) => {
+      if (statsInFlight) {
+        analyticsDebug('stats refresh skipped — request already in flight');
+        return;
+      }
+
+      const controller = new AbortController();
+      statsInFlight = controller;
+      const startedAt = performance.now();
+      analyticsDebug('stats refresh start', { range, isInitial });
+
       if (isInitial) {
         setLoading(true);
       }
+
       try {
         const payload = await fetchPublicAnalytics(range, controller.signal);
         if (cancelled) return;
         setData(payload);
         setError(null);
+        analyticsDebug('stats refresh complete', {
+          ms: Math.round(performance.now() - startedAt),
+          overview: payload.overview,
+        });
       } catch (err) {
-        if (cancelled || (err instanceof DOMException && err.name === 'AbortError')) {
+        if (
+          cancelled ||
+          (err instanceof DOMException && err.name === 'AbortError')
+        ) {
           return;
         }
+        analyticsDebug('stats refresh error', err);
         setError(err instanceof Error ? err.message : 'Failed to load analytics');
       } finally {
+        if (statsInFlight === controller) {
+          statsInFlight = null;
+        }
         if (!cancelled) {
           setLoading(false);
         }
       }
     };
 
-    void load(true);
-    const timer = window.setInterval(() => {
-      void load(false);
-    }, REFRESH_MS);
+    const loadActive = async () => {
+      if (activeInFlight) {
+        analyticsDebug('active refresh skipped — request already in flight');
+        return;
+      }
+
+      const controller = new AbortController();
+      activeInFlight = controller;
+      const startedAt = performance.now();
+      analyticsDebug('active refresh start');
+
+      try {
+        const live = await fetchLiveTelemetry(controller.signal);
+        if (cancelled) return;
+
+        const active = live.overview.activeWatchers;
+        setData((prev) => {
+          if (!prev) return prev;
+          if (
+            prev.overview.activeVisitors === active &&
+            prev.live.activeVisitors === active &&
+            prev.updatedAtLabel === live.updatedAtLabel
+          ) {
+            return prev;
+          }
+          return {
+            ...prev,
+            updatedAt: live.updatedAt,
+            updatedAtLabel: live.updatedAtLabel,
+            overview: {
+              ...prev.overview,
+              activeVisitors: active,
+            },
+            live: {
+              ...prev.live,
+              activeVisitors: active,
+            },
+          };
+        });
+        analyticsDebug('active refresh complete', {
+          ms: Math.round(performance.now() - startedAt),
+          activeWatchers: active,
+        });
+      } catch (err) {
+        if (
+          cancelled ||
+          (err instanceof DOMException && err.name === 'AbortError')
+        ) {
+          return;
+        }
+        analyticsDebug('active refresh error', err);
+        // Keep last good stats cards; active poll failures are non-fatal.
+      } finally {
+        if (activeInFlight === controller) {
+          activeInFlight = null;
+        }
+      }
+    };
+
+    const startPolling = () => {
+      clearTimers();
+      statsTimer = window.setInterval(() => {
+        void loadStats(false);
+      }, STATS_REFRESH_MS);
+      activeTimer = window.setInterval(() => {
+        void loadActive();
+      }, ACTIVE_REFRESH_MS);
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        analyticsDebug('tab hidden — pausing refresh');
+        clearTimers();
+        statsInFlight?.abort();
+        activeInFlight?.abort();
+        statsInFlight = null;
+        activeInFlight = null;
+        return;
+      }
+
+      analyticsDebug('tab visible — refreshing');
+      void loadStats(false);
+      void loadActive();
+      startPolling();
+    };
+
+    void loadStats(true);
+    void loadActive();
+    if (document.visibilityState === 'visible') {
+      startPolling();
+    }
+    document.addEventListener('visibilitychange', onVisibility);
 
     return () => {
       cancelled = true;
-      controller.abort();
-      window.clearInterval(timer);
+      clearTimers();
+      statsInFlight?.abort();
+      activeInFlight?.abort();
+      document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [range, refreshToken]);
 
@@ -163,7 +297,7 @@ function AnalyticsDashboard() {
             <section className="analytics-panel">
               <div className="analytics-panel-header">
                 <h2>Live Analytics</h2>
-                <span>Auto-refresh 10s</span>
+                <span>Stats 10s · Active 5s</span>
               </div>
               <div className="analytics-live-grid">
                 <div className="analytics-live-count">

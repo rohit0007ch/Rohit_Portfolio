@@ -1,18 +1,24 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import ScrollTrigger from "gsap/ScrollTrigger";
 import HoverLinks from "./HoverLinks";
 import gsap from "gsap";
 import ScrollSmoother from "gsap/ScrollSmoother";
+import { IoEyeOutline } from "react-icons/io5";
+import { fetchLiveTelemetry } from "../lib/analytics/fetchLiveTelemetry";
 import "./styles/Navbar.css";
 
 gsap.registerPlugin(ScrollSmoother, ScrollTrigger);
 export let smoother: ScrollSmoother;
+
+const EYE_COUNT_REFRESH_MS = 15_000;
 
 interface NavbarProps {
   onLiveClick?: () => void;
 }
 
 const Navbar = ({ onLiveClick }: NavbarProps) => {
+  const [visitorCount, setVisitorCount] = useState<number | null>(null);
+
   useEffect(() => {
     smoother = ScrollSmoother.create({
       wrapper: "#smooth-wrapper",
@@ -42,6 +48,61 @@ const Navbar = ({ onLiveClick }: NavbarProps) => {
       ScrollSmoother.refresh(true);
     });
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    let inFlight: AbortController | null = null;
+    let timer: number | null = null;
+
+    const loadCount = async () => {
+      if (inFlight || document.visibilityState === "hidden") return;
+      const controller = new AbortController();
+      inFlight = controller;
+      try {
+        const payload = await fetchLiveTelemetry(controller.signal);
+        if (!cancelled) {
+          setVisitorCount(payload.overview.totalVisitors);
+        }
+      } catch {
+        // Keep last known count; eye button still opens the modal.
+      } finally {
+        if (inFlight === controller) inFlight = null;
+      }
+    };
+
+    const start = () => {
+      if (timer != null) window.clearInterval(timer);
+      timer = window.setInterval(() => {
+        void loadCount();
+      }, EYE_COUNT_REFRESH_MS);
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        if (timer != null) {
+          window.clearInterval(timer);
+          timer = null;
+        }
+        inFlight?.abort();
+        inFlight = null;
+        return;
+      }
+      void loadCount();
+      start();
+    };
+
+    void loadCount();
+    if (document.visibilityState === "visible") start();
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      cancelled = true;
+      if (timer != null) window.clearInterval(timer);
+      inFlight?.abort();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
+
   return (
     <>
       <div className="header">
@@ -79,11 +140,16 @@ const Navbar = ({ onLiveClick }: NavbarProps) => {
           <li>
             <button
               type="button"
-              className="navbar-live-btn"
+              className="navbar-eye-btn"
               data-cursor="disable"
               onClick={onLiveClick}
+              aria-label="Open real-time visitor telemetry"
+              title="Visitor telemetry"
             >
-              <HoverLinks text="LIVE" />
+              <IoEyeOutline className="navbar-eye-icon" aria-hidden="true" />
+              <span className="navbar-eye-count">
+                {visitorCount == null ? "—" : visitorCount.toLocaleString("en-IN")}
+              </span>
             </button>
           </li>
         </ul>

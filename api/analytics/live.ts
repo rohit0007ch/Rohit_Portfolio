@@ -22,7 +22,16 @@ export default async function handler(req: any, res: any) {
     return methodNotAllowed(res, 'GET');
   }
 
+  const debug =
+    process.env.NODE_ENV !== 'production' ||
+    process.env.ANALYTICS_DEBUG === '1';
+  const startedAt = Date.now();
+
   try {
+    if (debug) {
+      console.log('[api/analytics/live] start');
+    }
+
     const supabase = getSupabaseAdmin();
     const nowIso = utcNowIso();
     await expireStaleSessions(supabase, nowIso);
@@ -36,12 +45,26 @@ export default async function handler(req: any, res: any) {
     );
     res.setHeader('Pragma', 'no-cache');
 
+    if (debug) {
+      console.log('[api/analytics/live] ok', {
+        ms: Date.now() - startedAt,
+        overview: payload.overview,
+        sessionCount: payload.sessions.length,
+        liveCount: payload.sessions.filter((s) => s.isLive).length,
+      });
+    }
+
     return sendJson(res, 200, {
       success: true,
       ...payload,
     });
   } catch (error) {
     console.error('[api/analytics/live] unexpected error:', error);
+    if (debug) {
+      console.log('[api/analytics/live] failed', {
+        ms: Date.now() - startedAt,
+      });
+    }
     return sendJson(res, 500, {
       success: false,
       message: 'Failed to load live telemetry',

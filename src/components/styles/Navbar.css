@@ -30,15 +30,49 @@
   font-weight: 600;
   cursor: pointer;
 }
-.navbar-live-btn {
+.navbar-eye-btn {
   appearance: none;
-  border: 0;
-  background: transparent;
-  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   margin: 0;
-  color: inherit;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(125, 170, 255, 0.28);
+  background: linear-gradient(
+    180deg,
+    rgba(28, 42, 78, 0.92),
+    rgba(14, 22, 44, 0.96)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 6px 16px rgba(0, 0, 0, 0.28);
+  color: #e8eefc;
   font: inherit;
   cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.navbar-eye-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(125, 220, 170, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 8px 18px rgba(0, 0, 0, 0.34);
+}
+
+.navbar-eye-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.navbar-eye-count {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  min-width: 0.75em;
 }
 .navbar-connect {
   position: absolute;

@@ -26,6 +26,11 @@ export default async function handler(req: any, res: any) {
     return methodNotAllowed(res, 'GET');
   }
 
+  const debug =
+    process.env.NODE_ENV !== 'production' ||
+    process.env.ANALYTICS_DEBUG === '1';
+  const startedAt = Date.now();
+
   try {
     const rangeParam =
       typeof req.query?.range === 'string'
@@ -35,6 +40,10 @@ export default async function handler(req: any, res: any) {
           : '7d';
 
     const range = parseAnalyticsRange(rangeParam);
+    if (debug) {
+      console.log('[api/analytics/public] start', { range });
+    }
+
     const supabase = getSupabaseAdmin();
     const nowIso = utcNowIso();
 
@@ -46,7 +55,20 @@ export default async function handler(req: any, res: any) {
       formatKolkataTimestamp(new Date(nowIso))
     );
 
-    res.setHeader('Cache-Control', 'public, max-age=5, stale-while-revalidate=10');
+    // Dashboard polls frequently — never let browsers/CDNs serve stale aggregates.
+    res.setHeader(
+      'Cache-Control',
+      'no-store, no-cache, must-revalidate, max-age=0'
+    );
+    res.setHeader('Pragma', 'no-cache');
+
+    if (debug) {
+      console.log('[api/analytics/public] ok', {
+        range,
+        ms: Date.now() - startedAt,
+        overview: payload.overview,
+      });
+    }
 
     return sendJson(res, 200, {
       success: true,
@@ -54,6 +76,11 @@ export default async function handler(req: any, res: any) {
     });
   } catch (error) {
     console.error('[api/analytics/public] unexpected error:', error);
+    if (debug) {
+      console.log('[api/analytics/public] failed', {
+        ms: Date.now() - startedAt,
+      });
+    }
     return sendJson(res, 500, {
       success: false,
       message: 'Failed to load public analytics',
